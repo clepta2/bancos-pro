@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bancos, ISPB &amp; Contas Pro Studio — Base Oficial BACEN, DV de Contas e IBAN</title>
+  <meta name="description" content="Consulta de bancos por código COMPE, ISPB e CNPJ com base oficial do Banco Central, validação de dígito de agência/conta e IBAN brasileiro.">
+  <link rel="stylesheet" href="ponte-suite.css">
+  <style>
+    .bco-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    .bco-table th { text-align: left; color: var(--muted); font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; padding: 8px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--paper); }
+    .bco-table td { padding: 8px; border-bottom: 1px solid var(--line-light); vertical-align: top; }
+    .bco-table tr { cursor: pointer; }
+    .bco-table tr:hover td { background: var(--paper-elevated); }
+    .bco-table code { font-family: var(--font-mono); font-weight: 700; }
+    .bco-scroll { max-height: 440px; overflow: auto; border: 1px solid var(--line-light); border-radius: var(--radius-md); }
+    .bco-pill { display: inline-block; font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: var(--radius-full); margin-right: 4px; }
+    .bco-pill.pix { background: rgba(16,185,129,.15); color: #10b981; }
+    .bco-pill.compe { background: rgba(59,130,246,.15); color: #3b82f6; }
+    .bco-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+    .bco-row > * { flex: 1; min-width: 120px; }
+    .bco-result { margin-top: 12px; padding: 14px 16px; border-radius: var(--radius-md); border: 1px solid var(--line); background: var(--paper-elevated); font-size: 13px; line-height: 1.6; word-break: break-word; }
+    .bco-big { font-family: var(--font-mono); font-size: 20px; font-weight: 800; }
+    pre.bco-json { background: #030712; color: #a5f3fc; padding: 14px; border-radius: 8px; font-family: var(--font-mono); font-size: 12px; max-height: 320px; overflow: auto; white-space: pre-wrap; }
+  </style>
+  <script>
+    (function() {
+      const savedTheme = localStorage.getItem('ponte.theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme', savedTheme);
+    })();
+  </script>
+</head>
+<body>
+  <header class="ponte-header">
+    <div class="ponte-header-inner">
+      <div class="ponte-brand-block">
+        <a class="ponte-brand" href="https://ponte-marketplace.maputo2.workers.dev/#catalogo">
+          <svg class="ponte-brand-logo" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="40" height="40" rx="10" fill="#3b82f6"/>
+            <path d="M12 28V12L28 20L12 28Z" fill="#0c1715"/>
+          </svg>
+          <div class="ponte-brand-copy">
+            <strong>ponte</strong>
+            <small>BANCOS PRO · OZPRO</small>
+          </div>
+        </a>
+        <div class="ponte-breadcrumb">
+          <a href="https://ponte-marketplace.maputo2.workers.dev/#catalogo">Workspace</a>
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          <strong>Bancos, ISPB &amp; Contas Pro</strong>
+        </div>
+      </div>
+      <div class="ponte-topbar-actions">
+        <span class="ponte-status-edge"><span class="ponte-status-dot"></span> Cloudflare Anycast &lt;2ms</span>
+        <button class="ponte-theme-btn" id="theme-toggle-btn" aria-label="Alternar tema">🌙</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="ponte-container">
+    <div class="ponte-hero">
+      <div class="ponte-badges-bar" id="badges"></div>
+      <h1>Bancos, ISPB &amp; Contas Pro Studio</h1>
+      <p>Base oficial do Banco Central (participantes do STR e do Pix) com código COMPE, ISPB, CNPJ e modalidade Pix. Também valida o dígito verificador de agência e conta, gera e valida IBAN brasileiro e identifica o banco emissor de boletos.</p>
+    </div>
+
+    <div class="ponte-card">
+      <div class="ponte-card-title"><h3>Buscar instituição</h3></div>
+      <div class="bco-row">
+        <input type="text" id="q" class="ponte-input" placeholder="Nome, código COMPE, ISPB ou CNPJ (ex: nubank, 341, 18236120)" style="flex:3;">
+        <label style="font-size:13px;display:flex;align-items:center;gap:6px;flex:0 0 auto;"><input type="checkbox" id="f-pix"> Ativos no Pix</label>
+        <label style="font-size:13px;display:flex;align-items:center;gap:6px;flex:0 0 auto;"><input type="checkbox" id="f-cod" checked> Com código COMPE</label>
+      </div>
+      <div id="total" style="font-size:12px;color:var(--muted);margin-bottom:8px;"></div>
+      <div class="bco-scroll">
+        <table class="bco-table">
+          <thead><tr><th>COMPE</th><th>ISPB</th><th>Instituição</th><th>Tipo</th><th>Participação</th></tr></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="ponte-grid-2" style="margin-top:16px;align-items:start;">
+      <div class="ponte-card">
+        <div class="ponte-card-title"><h3>Validar agência e conta (DV)</h3></div>
+        <div class="bco-row">
+          <select id="v-banco" class="ponte-select" aria-label="Banco">
+            <option value="001">001 • Banco do Brasil</option>
+            <option value="341" selected>341 • Itaú</option>
+            <option value="237">237 • Bradesco</option>
+            <option value="033">033 • Santander</option>
+            <option value="104">104 • Caixa</option>
+            <option value="260">260 • Nubank (só formato)</option>
+          </select>
+        </div>
+        <div class="bco-row">
+          <input type="text" id="v-ag" class="ponte-input" value="2545" placeholder="Agência" aria-label="Agência">
+          <input type="text" id="v-ct" class="ponte-input" value="02366-1" placeholder="Conta-DV" aria-label="Conta">
+          <button class="ponte-btn" id="btn-validar" style="flex:0 0 auto;">Validar</button>
+        </div>
+        <div id="res-validar" class="bco-result"></div>
+      </div>
+
+      <div class="ponte-card">
+        <div class="ponte-card-title"><h3>IBAN brasileiro (ISO 13616)</h3></div>
+        <div class="bco-row">
+          <input type="text" id="i-banco" class="ponte-input" value="104" placeholder="COMPE" aria-label="Banco">
+          <input type="text" id="i-ag" class="ponte-input" value="00001" placeholder="Agência" aria-label="Agência">
+          <input type="text" id="i-ct" class="ponte-input" value="0009795493" placeholder="Conta+DV" aria-label="Conta">
+          <select id="i-tipo" class="ponte-select" aria-label="Tipo"><option value="C">Corrente</option><option value="P">Poupança</option></select>
+        </div>
+        <div class="bco-row">
+          <button class="ponte-btn" id="btn-iban" style="flex:0 0 auto;">Gerar IBAN</button>
+          <input type="text" id="i-validar" class="ponte-input" placeholder="Ou cole um IBAN para validar" aria-label="IBAN">
+          <button class="ponte-btn ponte-btn-secondary" id="btn-iban-val" style="flex:0 0 auto;">Validar</button>
+        </div>
+        <div id="res-iban" class="bco-result"></div>
+      </div>
+    </div>
+
+    <div class="ponte-card" style="margin-top:16px;">
+      <div class="ponte-card-title"><h3>Banco emissor do boleto</h3></div>
+      <div class="bco-row">
+        <input type="text" id="b-linha" class="ponte-input" value="34191.79001 01043.510047 91020.150008 5 84230000016000" style="flex:4;" aria-label="Linha digitável">
+        <button class="ponte-btn" id="btn-boleto" style="flex:0 0 auto;">Identificar</button>
+      </div>
+      <div id="res-boleto" class="bco-result"></div>
+    </div>
+
+    <div class="ponte-card" style="margin-top:16px;">
+      <div class="ponte-card-title"><h3>Payload JSON (GET /api/bancos/:codigo)</h3></div>
+      <pre id="json" class="bco-json">Clique em uma instituição da tabela.</pre>
+    </div>
+  </main>
+
+  <script type="module">
+    import { BancosEngine as B } from './bancos-engine.js';
+
+    const $ = id => document.getElementById(id);
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const ok = v => `<span style="color:${v ? '#10b981' : '#ef4444'};font-weight:800">${v ? '✓ VÁLIDO' : '✗ INVÁLIDO'}</span>`;
+
+    const st = B.estatisticas();
+    $('badges').innerHTML = `
+      <span class="ponte-badge blue">🏦 ${st.totalInstituicoes} instituições BACEN</span>
+      <span class="ponte-badge mint">⚡ ${st.pixAtivos} ativas no Pix</span>
+      <span class="ponte-badge purple">🔢 ${st.comCodigoCompe} códigos COMPE</span>
+      <span class="ponte-badge amber">📅 Base de ${st.atualizadoEm.split('-').reverse().join('/')}</span>`;
+
+    let timer;
+    function buscar() {
+      const termo = $('q').value.trim();
+      const direto = B.identificar(termo);
+      const r = direto ? { total: 1, bancos: [direto] } : B.listarBancos({ q: termo, pix: $('f-pix').checked, comCodigo: $('f-cod').checked, limite: 200 });
+      $('total').textContent = `${r.total} instituição(ões) encontrada(s)${r.total > 200 ? ' — mostrando 200' : ''}`;
+      $('tbody').innerHTML = r.bancos.map(b => `
+        <tr data-ispb="${b.ispb}">
+          <td><code>${b.codigo || '—'}</code></td>
+          <td><code>${b.ispb}</code></td>
+          <td><strong>${esc(b.nomeReduzido)}</strong><br><span style="color:var(--muted)">${esc(b.nomeExtenso)}</span></td>
+          <td>${esc(b.tipoInstituicao || '—')}</td>
+          <td>${b.pix?.status === 'ATIVO' ? '<span class="bco-pill pix">PIX</span>' : ''}${b.participaCompe ? '<span class="bco-pill compe">COMPE</span>' : ''}</td>
+        </tr>`).join('');
+    }
+
+    $('tbody').addEventListener('click', e => {
+      const tr = e.target.closest('tr[data-ispb]');
+      if (tr) $('json').textContent = JSON.stringify({ ok: true, ...B.buscarPorIspb(tr.dataset.ispb) }, null, 2);
+    });
+    $('q').addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(buscar, 150); });
+    ['f-pix', 'f-cod'].forEach(id => $(id).addEventListener('change', buscar));
+
+    $('btn-validar').addEventListener('click', () => {
+      const r = B.validarConta({ banco: $('v-banco').value, agencia: $('v-ag').value, conta: $('v-ct').value });
+      if (!r.ok) { $('res-validar').textContent = r.mensagem; return; }
+      $('res-validar').innerHTML = `
+        <div class="bco-big">${ok(r.valido)}</div>
+        ${esc(r.banco.nome)} • ${esc(r.motivo)}<br>
+        ${r.nivelValidacao === 'ALGORITMO'
+          ? `DV conta: informado <code>${esc(r.conta.dvInformado)}</code> / esperado <code>${r.conta.dvEsperado}</code>${r.agencia.dvEsperado ? ` • DV agência esperado <code>${r.agencia.dvEsperado}</code>` : ''}<br>Formatado: <code>${r.formatado}</code>`
+          : 'Nível: validação de formato'}`;
+    });
+
+    function mostrarIban(r) {
+      if (!r.ok) { $('res-iban').textContent = r.mensagem; return; }
+      $('res-iban').innerHTML = `
+        ${r.valido !== undefined ? `<div>${ok(r.valido)} — ${esc(r.motivo)}</div>` : ''}
+        ${r.ibanFormatado ? `<div class="bco-big" style="color:#10b981">${r.ibanFormatado}</div>` : ''}
+        ${r.componentes ? `ISPB <code>${r.componentes.ispb}</code> • Agência <code>${r.componentes.agencia}</code> • Conta <code>${r.componentes.conta}</code> • ${r.componentes.tipoConta}` : ''}
+        ${r.banco ? `<br>Banco: <strong>${esc(r.banco.codigo || '')} ${esc(r.banco.nome)}</strong>` : ''}`;
+    }
+    $('btn-iban').addEventListener('click', () => mostrarIban(B.gerarIban({ banco: $('i-banco').value, agencia: $('i-ag').value, conta: $('i-ct').value, tipoConta: $('i-tipo').value })));
+    $('btn-iban-val').addEventListener('click', () => mostrarIban(B.validarIban($('i-validar').value)));
+
+    $('btn-boleto').addEventListener('click', () => {
+      const r = B.identificarBancoBoleto($('b-linha').value);
+      $('res-boleto').innerHTML = !r.ok ? esc(r.mensagem) : r.tipo === 'ARRECADACAO' ? esc(r.mensagem)
+        : `<div class="bco-big">${r.codigoBanco} • ${esc(r.banco?.nomeReduzido || r.banco?.nome || 'Desconhecido')}</div>${esc(r.banco?.nomeExtenso || r.mensagem)}${r.banco ? ` • ISPB <code>${r.banco.ispb}</code> • CNPJ <code>${r.banco.cnpj || '—'}</code>` : ''}`;
+    });
+
+    $('theme-toggle-btn').addEventListener('click', () => {
+      const next = (document.documentElement.getAttribute('data-theme') || 'dark') === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('ponte.theme', next);
+    });
+
+    buscar();
+    $('btn-validar').click();
+    $('btn-iban').click();
+    $('btn-boleto').click();
+  </script>
+</body>
+</html>

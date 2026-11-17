@@ -1,0 +1,37 @@
+{
+  "name": "bancos-pro",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "API e SDK Oficial de Bancos e Instituições Financeiras do Brasil (base oficial BACEN STR + Pix), código COMPE, ISPB, CNPJ, validação de DV de agência/conta, IBAN brasileiro e banco emissor de boletos na borda Cloudflare Anycast (<2ms).",
+  "main": "bancos-pro.js",
+  "module": "bancos-pro.js",
+  "scripts": {
+    "test": "node test.js",
+    "build:db": "node scripts/build-bancos-db.mjs",
+    "update:db": "node scripts/build-bancos-db.mjs --download",
+    "deploy": "wrangler deploy",
+    "security:check": "node scripts/security-guard.js"
+  },
+  "keywords": [
+    "bancos",
+    "ispb",
+    "compe",
+    "febraban",
+    "bacen",
+    "pix",
+    "agencia",
+    "conta",
+    "digito-verificador",
+    "iban",
+    "boleto",
+    "cloudflare-worker",
+    "anycast",
+    "sdk"
+  ],
+  "author": "clepta2 <clepta2@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/clepta2/bancos-pro.git"
+  }
+}
