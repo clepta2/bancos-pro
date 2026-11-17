@@ -54,6 +54,16 @@ await t('Listagem com filtro de texto sem acento e Pix', () => {
   assert.equal(listarBancos({ limite: 10, pagina: 2 }).bancos.length, 10);
 });
 
+await t('DV: toda resposta traz verificacao e aviso; Bradesco/Santander/Caixa saem como NÃO verificados', () => {
+  const casos = [['001','1584-9','00210169-6','exemplo'], ['341','2545','02366-1','exemplo'], ['237','1425','0238069-2','nao_verificado'], ['033','0189','01017417-9','nao_verificado'], ['104','0001','00100000448-4','nao_verificado']];
+  for (const [banco, agencia, conta, esperado] of casos) {
+    const r = validarConta({ banco, agencia, conta });
+    assert.equal(r.verificacao, esperado, banco);
+    assert.ok(r.aviso && r.aviso.length > 20, banco);
+    if (esperado === 'nao_verificado') assert.match(r.aviso, /NÃO foi conferido/);
+  }
+});
+
 await t('DV Banco do Brasil (agência 1584-9, conta 00210169-6)', () => {
   const r = validarConta({ banco: '001', agencia: '1584-9', conta: '00210169-6' });
   assert.equal(r.valido, true);

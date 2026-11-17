@@ -13,9 +13,21 @@
 
 1. **Base oficial BACEN**: junta a [lista de participantes do STR](https://www.bcb.gov.br/estabilidadefinanceira/participantesstr) (código COMPE, ISPB, acesso RSFN e início da operação) com a [lista de participantes do Pix](https://www.bcb.gov.br/estabilidadefinanceira/participantespix) (CNPJ, tipo de instituição, modalidade, iniciação de pagamento e saque/troco). São cerca de 1.080 instituições.
 2. **Consulta** por código COMPE, ISPB ou CNPJ, e busca textual que ignora acentos.
-3. **Validação de DV de agência e conta** pelo algoritmo oficial de **Banco do Brasil, Itaú, Bradesco, Santander e Caixa**. Nos demais bancos, só o formato é validado.
+3. **Validação de DV de agência e conta** para Banco do Brasil, Itaú, Bradesco, Santander e Caixa (veja o status abaixo). Nos demais bancos, só o formato é validado.
 4. **IBAN brasileiro (ISO 13616)**: gera a partir de ISPB/COMPE, agência e conta, e valida o checksum mod-97.
 5. **Banco emissor do boleto** a partir da linha digitável ou do código de barras.
+
+## ⚠️ Status dos dados
+
+| Dado | Status |
+|---|---|
+| Instituições, COMPE, ISPB, CNPJ e participação no Pix | Origem: listas oficiais do BACEN (STR e Pix) baixadas em 17/11/2026; o gerador está em `scripts/build-bancos-db.mjs` |
+| IBAN (ISO 13616, mod-97) | Algoritmo padrão; conferido com o IBAN de exemplo `BR1800360305000010009795493C1` |
+| DV de Banco do Brasil e Itaú | Conferido **só com contas de exemplo**, não com a especificação do banco |
+| **DV de Bradesco, Santander e Caixa** | **NÃO verificado** com a especificação oficial |
+| Apelidos de marca (nubank, inter, c6...) | Mapeamento feito à mão sobre os códigos COMPE da base |
+
+A resposta de `/api/bancos/conta/validar` traz `verificacao` e `aviso`. Não use o resultado como garantia de que a conta existe: ele só indica se o dígito confere com o algoritmo implementado.
 
 > Os dados vão embutidos no Worker (`bancos-db.js`), sem nenhuma chamada externa em tempo de execução.
 

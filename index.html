@@ -87,9 +87,9 @@
           <select id="v-banco" class="ponte-select" aria-label="Banco">
             <option value="001">001 • Banco do Brasil</option>
             <option value="341" selected>341 • Itaú</option>
-            <option value="237">237 • Bradesco</option>
-            <option value="033">033 • Santander</option>
-            <option value="104">104 • Caixa</option>
+            <option value="237">237 • Bradesco (não verificado)</option>
+            <option value="033">033 • Santander (não verificado)</option>
+            <option value="104">104 • Caixa (não verificado)</option>
             <option value="260">260 • Nubank (só formato)</option>
           </select>
         </div>
@@ -177,7 +177,7 @@
         <div class="bco-big">${ok(r.valido)}</div>
         ${esc(r.banco.nome)} • ${esc(r.motivo)}<br>
         ${r.nivelValidacao === 'ALGORITMO'
-          ? `DV conta: informado <code>${esc(r.conta.dvInformado)}</code> / esperado <code>${r.conta.dvEsperado}</code>${r.agencia.dvEsperado ? ` • DV agência esperado <code>${r.agencia.dvEsperado}</code>` : ''}<br>Formatado: <code>${r.formatado}</code>`
+          ? `DV conta: informado <code>${esc(r.conta.dvInformado)}</code> / esperado <code>${r.conta.dvEsperado}</code>${r.agencia.dvEsperado ? ` • DV agência esperado <code>${r.agencia.dvEsperado}</code>` : ''}<br>Formatado: <code>${r.formatado}</code><br><strong style="color:#f59e0b">⚠ ${esc(r.aviso)}</strong>`
           : 'Nível: validação de formato'}`;
     });
 

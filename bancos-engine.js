@@ -149,18 +149,23 @@ function mod11Pesos(digitos, pesos) {
   return digitos.split('').reduce((s, d, i) => s + Number(d) * pesos[i], 0);
 }
 
+// verificacao: 'exemplo' = só conferido com contas de exemplo; 'nao_verificado' = algoritmo escrito sem conferência com fonte oficial do banco.
+// Nenhum dos cinco foi comparado com a especificação oficial publicada pelo próprio banco.
 const VALIDADORES = {
   '001': {
+    verificacao: 'exemplo',
     nome: 'Banco do Brasil — Módulo 11 (agência 4+DV, conta 8+DV, DV "X" para 10)',
     agencia: { tamanho: 4, dv: ag => { const r = 11 - (mod11Pesos(ag, [5, 4, 3, 2]) % 11); return r === 10 ? 'X' : r === 11 ? '0' : String(r); } },
     conta: { tamanho: 8, dv: (_ag, ct) => { const r = 11 - (mod11Pesos(ct, [9, 8, 7, 6, 5, 4, 3, 2]) % 11); return r === 10 ? 'X' : r === 11 ? '0' : String(r); } }
   },
   '237': {
+    verificacao: 'nao_verificado',
     nome: 'Bradesco — Módulo 11 (agência 4+DV, conta 7+DV, DV "P" para 10)',
     agencia: { tamanho: 4, dv: ag => { const r = 11 - (mod11Pesos(ag, [5, 4, 3, 2]) % 11); return r === 10 ? 'P' : r === 11 ? '0' : String(r); } },
     conta: { tamanho: 7, dv: (_ag, ct) => { const r = mod11Pesos(ct, [2, 7, 6, 5, 4, 3, 2]) % 11; return r === 0 ? '0' : r === 1 ? 'P' : String(11 - r); } }
   },
   '341': {
+    verificacao: 'exemplo',
     nome: 'Itaú — Módulo 10 sobre agência (4) + conta (5)',
     agencia: { tamanho: 4, dv: null },
     conta: { tamanho: 5, dv: (ag, ct) => {
@@ -169,6 +174,7 @@ const VALIDADORES = {
     } }
   },
   '033': {
+    verificacao: 'nao_verificado',
     nome: 'Santander — Módulo 10 ponderado sobre agência (4) + conta (8)',
     agencia: { tamanho: 4, dv: null },
     conta: { tamanho: 8, dv: (ag, ct) => {
@@ -178,6 +184,7 @@ const VALIDADORES = {
     } }
   },
   '104': {
+    verificacao: 'nao_verificado',
     nome: 'Caixa Econômica Federal — Módulo 11 sobre agência (4) + operação (3) + conta (8)',
     agencia: { tamanho: 4, dv: null },
     conta: { tamanho: 11, dv: (ag, ct) => {
@@ -187,7 +194,7 @@ const VALIDADORES = {
   }
 };
 
-export const BANCOS_COM_VALIDACAO_DV = Object.fromEntries(Object.entries(VALIDADORES).map(([c, v]) => [c, v.nome]));
+export const BANCOS_COM_VALIDACAO_DV = Object.fromEntries(Object.entries(VALIDADORES).map(([c, v]) => [c, `${v.nome} [${v.verificacao === 'exemplo' ? 'conferido só com contas de exemplo' : 'NÃO verificado'}]`]));
 
 function separarDv(valor) {
   const s = String(valor ?? '').trim().toUpperCase().replace(/\s/g, '');
@@ -249,6 +256,8 @@ export function validarConta({ banco, agencia, conta } = {}) {
     valido: agOk && ctOk,
     nivelValidacao: 'ALGORITMO',
     algoritmo: v.nome,
+    verificacao: v.verificacao,
+    ...(v.verificacao === 'nao_verificado' ? { aviso: 'Algoritmo de DV deste banco ainda NÃO foi conferido com a especificação oficial. Um resultado válido ou inválido não é garantia; confirme com o banco.' } : { aviso: 'Algoritmo conferido apenas com contas de exemplo, não com a especificação oficial do banco. Confirme com o banco em operações financeiras.' }),
     agencia: { numero: agPad, dvInformado: agDv || null, dvEsperado: dvAgEsperado, valida: agOk },
     conta: { numero: ctPad, dvInformado: ctDv, dvEsperado: dvCtEsperado, valida: ctOk },
     formatado: `${agPad}${dvAgEsperado ? '-' + dvAgEsperado : ''} / ${ctPad}-${dvCtEsperado}`,
