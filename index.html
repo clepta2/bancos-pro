@@ -119,6 +119,15 @@
     </div>
 
     <div class="ponte-card" style="margin-top:16px;">
+      <div class="ponte-card-title"><h3>Validador de Chave Pix (DICT / BACEN)</h3></div>
+      <div class="bco-row">
+        <input type="text" id="p-chave" class="ponte-input" value="123e4567-e89b-12d3-a456-426614174000" placeholder="Insira CPF, CNPJ, E-mail, Telefone (+55) ou EVP" style="flex:4;" aria-label="Chave Pix">
+        <button class="ponte-btn" id="btn-pix" style="flex:0 0 auto;">Validar Chave Pix</button>
+      </div>
+      <div id="res-pix" class="bco-result"></div>
+    </div>
+
+    <div class="ponte-card" style="margin-top:16px;">
       <div class="ponte-card-title"><h3>Banco emissor do boleto</h3></div>
       <div class="bco-row">
         <input type="text" id="b-linha" class="ponte-input" value="34191.79001 01043.510047 91020.150008 5 84230000016000" style="flex:4;" aria-label="Linha digitável">
@@ -198,6 +207,15 @@
         : `<div class="bco-big">${r.codigoBanco} • ${esc(r.banco?.nomeReduzido || r.banco?.nome || 'Desconhecido')}</div>${esc(r.banco?.nomeExtenso || r.mensagem)}${r.banco ? ` • ISPB <code>${r.banco.ispb}</code> • CNPJ <code>${r.banco.cnpj || '—'}</code>` : ''}`;
     });
 
+    $('btn-pix').addEventListener('click', () => {
+      const r = B.validarChavePix($('p-chave').value);
+      $('res-pix').innerHTML = !r.ok ? esc(r.mensagem) : `
+        <div class="bco-big">${ok(r.valida)} • Tipo: ${esc(r.tipo)}</div>
+        Chave Normalizada: <code>${esc(r.normalizada || r.chave)}</code><br>
+        ${esc(r.motivo || r.descricao || '')}
+      `;
+    });
+
     $('theme-toggle-btn').addEventListener('click', () => {
       const next = (document.documentElement.getAttribute('data-theme') || 'dark') === 'dark' ? 'light' : 'dark';
       document.documentElement.setAttribute('data-theme', next);
@@ -208,6 +226,7 @@
     $('btn-validar').click();
     $('btn-iban').click();
     $('btn-boleto').click();
+    $('btn-pix').click();
   </script>
 </body>
 </html>

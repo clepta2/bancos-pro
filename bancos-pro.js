@@ -72,6 +72,14 @@ export class BancosPro {
   static bancoDoBoleto(linhaDigitavel) {
     return this._get(`/api/bancos/boleto/${String(linhaDigitavel).replace(/\D/g, '')}`);
   }
+
+  /**
+   * Valida e classifica qualquer chave Pix no padrão do DICT (CPF, CNPJ, Email, Telefone E.164, EVP/UUID)
+   * @param {string} chave - Ex: '123e4567-e89b-12d3-a456-426614174000', '11999998888', 'user@domain.com'
+   */
+  static validarChavePix(chave) {
+    return this._get('/api/bancos/pix/validar', { chave });
+  }
 }
 
 export default BancosPro;

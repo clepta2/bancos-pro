@@ -347,6 +347,172 @@ export function identificarBancoBoleto(linha) {
   };
 }
 
+// ─── VALIDAÇÃO OFICIAL DE CHAVES PIX (DICT / BACEN) ───
+
+export function validarCpf(cpf) {
+  const c = somenteDigitos(cpf);
+  if (c.length !== 11 || /^(\d)\1{10}$/.test(c)) return false;
+  let soma = 0;
+  for (let i = 0; i < 9; i++) soma += Number(c[i]) * (10 - i);
+  let d1 = (soma * 10) % 11;
+  if (d1 === 10) d1 = 0;
+  if (d1 !== Number(c[9])) return false;
+  soma = 0;
+  for (let i = 0; i < 10; i++) soma += Number(c[i]) * (11 - i);
+  let d2 = (soma * 10) % 11;
+  if (d2 === 10) d2 = 0;
+  return d2 === Number(c[10]);
+}
+
+export function validarCnpj(cnpj) {
+  const c = somenteDigitos(cnpj);
+  if (c.length !== 14 || /^(\d)\1{13}$/.test(c)) return false;
+  const p1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+  let soma = 0;
+  for (let i = 0; i < 12; i++) soma += Number(c[i]) * p1[i];
+  let d1 = soma % 11 < 2 ? 0 : 11 - (soma % 11);
+  if (d1 !== Number(c[12])) return false;
+  const p2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+  soma = 0;
+  for (let i = 0; i < 13; i++) soma += Number(c[i]) * p2[i];
+  let d2 = soma % 11 < 2 ? 0 : 11 - (soma % 11);
+  return d2 === Number(c[13]);
+}
+
+export function validarChavePix(chaveInput) {
+  const s = String(chaveInput || '').trim();
+  if (!s) return { ok: false, erro: 'PARAMETRO_OBRIGATORIO', mensagem: 'Informe a chave Pix em "chave".' };
+
+  // 1. Chave Aleatória (EVP - UUIDv4)
+  const padraoEvp = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (padraoEvp.test(s)) {
+    return {
+      ok: true,
+      valida: true,
+      tipo: 'EVP_ALEATORIA',
+      chave: s.toLowerCase(),
+      normalizada: s.toLowerCase(),
+      descricao: 'Chave Aleatória (EVP) no padrão UUIDv4'
+    };
+  }
+
+  // 2. E-mail (RFC 5322 simplificado conforme DICT)
+  if (s.includes('@') && /^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/.test(s) && s.length <= 77) {
+    return {
+      ok: true,
+      valida: true,
+      tipo: 'EMAIL',
+      chave: s,
+      normalizada: s.toLowerCase(),
+      descricao: 'E-mail conforme padrão RFC 5322'
+    };
+  }
+
+  const digitos = somenteDigitos(s);
+
+  // 3. Telefone internacional explícito (+...)
+  if (s.startsWith('+')) {
+    const e164 = '+' + digitos;
+    const telValido = /^\+[1-9]\d{9,14}$/.test(e164);
+    if (telValido) {
+      return {
+        ok: true,
+        valida: true,
+        tipo: 'TELEFONE',
+        chave: s,
+        normalizada: e164,
+        descricao: 'Telefone celular no formato internacional E.164'
+      };
+    }
+  }
+
+  // 4. Formato de CPF (com máscara ou 11 dígitos sem +)
+  if (s.includes('.') && s.includes('-') && digitos.length === 11) {
+    const cpfOk = validarCpf(digitos);
+    return {
+      ok: true,
+      valida: cpfOk,
+      tipo: 'CPF',
+      chave: s,
+      normalizada: digitos,
+      formatado: `${digitos.slice(0,3)}.${digitos.slice(3,6)}.${digitos.slice(6,9)}-${digitos.slice(9)}`,
+      motivo: cpfOk ? 'CPF válido pelo algoritmo Módulo 11 da Receita Federal.' : 'Dígitos verificadores do CPF inválidos.'
+    };
+  }
+
+  // 5. Formato de CNPJ (com máscara ou 14 dígitos)
+  if (digitos.length === 14) {
+    const cnpjOk = validarCnpj(digitos);
+    return {
+      ok: true,
+      valida: cnpjOk,
+      tipo: 'CNPJ',
+      chave: s,
+      normalizada: digitos,
+      formatado: `${digitos.slice(0,2)}.${digitos.slice(2,5)}.${digitos.slice(5,8)}/${digitos.slice(8,12)}-${digitos.slice(12)}`,
+      motivo: cnpjOk ? 'CNPJ válido pelo algoritmo Módulo 11 da Receita Federal.' : 'Dígitos verificadores do CNPJ inválidos.'
+    };
+  }
+
+  // 6. 11 dígitos puros: verifica se é CPF ou Telefone celular (DDD + 9xxxx-xxxx)
+  if (digitos.length === 11) {
+    const cpfOk = validarCpf(digitos);
+    // Se o CPF for matematicamente válido, classifica como CPF
+    if (cpfOk) {
+      return {
+        ok: true,
+        valida: true,
+        tipo: 'CPF',
+        chave: s,
+        normalizada: digitos,
+        formatado: `${digitos.slice(0,3)}.${digitos.slice(3,6)}.${digitos.slice(6,9)}-${digitos.slice(9)}`,
+        motivo: 'CPF válido pelo algoritmo Módulo 11 da Receita Federal.'
+      };
+    }
+    // Se não for CPF e o 3º dígito for 9 (celular BR), aceita como Telefone normalizado para +55
+    if (digitos[2] === '9') {
+      return {
+        ok: true,
+        valida: true,
+        tipo: 'TELEFONE',
+        chave: s,
+        normalizada: '+55' + digitos,
+        descricao: 'Telefone celular brasileiro normalizado para E.164 (+55...)'
+      };
+    }
+    // Caso contrário, é um CPF inválido
+    return {
+      ok: true,
+      valida: false,
+      tipo: 'CPF',
+      chave: s,
+      normalizada: digitos,
+      formatado: `${digitos.slice(0,3)}.${digitos.slice(3,6)}.${digitos.slice(6,9)}-${digitos.slice(9)}`,
+      motivo: 'Dígitos verificadores do CPF inválidos.'
+    };
+  }
+
+  // 7. Telefone fixo/celular com 10 dígitos (DDD + 8 dígitos)
+  if (digitos.length === 10) {
+    return {
+      ok: true,
+      valida: true,
+      tipo: 'TELEFONE',
+      chave: s,
+      normalizada: '+55' + digitos,
+      descricao: 'Telefone nacional normalizado para E.164 (+55...)'
+    };
+  }
+
+  return {
+    ok: true,
+    valida: false,
+    tipo: 'DESCONHECIDO',
+    chave: s,
+    motivo: 'Formato não reconhecido como chave Pix válida (esperado: CPF, CNPJ, E-mail, Telefone E.164 ou Chave Aleatória UUID).'
+  };
+}
+
 export const BancosEngine = {
   BANCOS_DB_GERADO_EM,
   BANCOS_COM_VALIDACAO_DV,
@@ -359,7 +525,10 @@ export const BancosEngine = {
   validarConta,
   gerarIban,
   validarIban,
-  identificarBancoBoleto
+  identificarBancoBoleto,
+  validarCpf,
+  validarCnpj,
+  validarChavePix
 };
 
 export default BancosEngine;

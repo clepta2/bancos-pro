@@ -16,6 +16,7 @@ import {
   gerarIban,
   validarIban,
   identificarBancoBoleto,
+  validarChavePix,
   BANCOS_COM_VALIDACAO_DV,
   BANCOS_DB_GERADO_EM
 } from './bancos-engine.js';
@@ -148,6 +149,11 @@ export default {
       }
 
       if (path === '/api/bancos/estatisticas') return json(estatisticas(), 200, rh);
+
+      if (path === '/api/bancos/pix/validar' || path === '/api/bancos/validar-pix') {
+        const chave = p.chave || p.key || p.valor || '';
+        return json(validarChavePix(chave), 200, rh);
+      }
 
       if (path === '/api/bancos/conta/validar' || path === '/api/bancos/validar-conta') {
         const r = validarConta({ banco: p.banco, agencia: p.agencia, conta: p.conta });

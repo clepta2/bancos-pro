@@ -65,6 +65,7 @@ npm test
 | GET/POST | `/api/bancos/iban/gerar?banco=&agencia=&conta=&tipoConta=C` | Gera IBAN |
 | GET | `/api/bancos/iban/validar/:iban` | Valida e decompõe IBAN |
 | GET | `/api/bancos/boleto/:linha` | Identifica o banco emissor do boleto |
+| GET | `/api/bancos/pix/validar?chave=` | Valida e normaliza chave Pix (CPF, CNPJ, Email, E.164, EVP UUIDv4) |
 
 ```bash
 curl "https://bancos-pro-api.maputo2.workers.dev/api/bancos/conta/validar?banco=341&agencia=2545&conta=02366-1"

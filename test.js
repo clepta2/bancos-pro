@@ -8,7 +8,8 @@ import {
   validarConta,
   gerarIban,
   validarIban,
-  identificarBancoBoleto
+  identificarBancoBoleto,
+  validarChavePix
 } from './bancos-engine.js';
 import worker from './worker.js';
 
@@ -143,6 +144,34 @@ await t('HTTP busca, boleto e rota inexistente', async () => {
   assert.equal((await call('/api/bancos/boleto/34191790010104351004791020150008584230000016000')).body.codigoBanco, '341');
   assert.equal((await call('/api/bancos/boleto/123')).res.status, 400);
   assert.equal((await call('/api/xyz')).res.status, 404);
+});
+
+await t('Validação e classificação de chave Pix (DICT BACEN)', async () => {
+  // EVP / Chave aleatória
+  const evp = validarChavePix('123e4567-e89b-12d3-a456-426614174000');
+  assert.equal(evp.valida, true);
+  assert.equal(evp.tipo, 'EVP_ALEATORIA');
+
+  // E-mail
+  const email = validarChavePix('financeiro@ponte.ozpro.com.br');
+  assert.equal(email.valida, true);
+  assert.equal(email.tipo, 'EMAIL');
+
+  // Telefone E.164
+  const tel = validarChavePix('11999998888');
+  assert.equal(tel.valida, true);
+  assert.equal(tel.tipo, 'TELEFONE');
+  assert.equal(tel.normalizada, '+5511999998888');
+
+  // CPF
+  const cpfInvalido = validarChavePix('111.111.111-11');
+  assert.equal(cpfInvalido.tipo, 'CPF');
+  assert.equal(cpfInvalido.valida, false);
+
+  // Endpoint HTTP
+  const httpPix = await call('/api/bancos/pix/validar?chave=financeiro@ponte.ozpro.com.br');
+  assert.equal(httpPix.body.tipo, 'EMAIL');
+  assert.equal(httpPix.body.valida, true);
 });
 
 console.log(`\n🎉 Todos os ${pass} testes do Bancos Pro passaram!`);
